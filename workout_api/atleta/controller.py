@@ -1,6 +1,6 @@
 from datetime import datetime
 from uuid import uuid4
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Query
 from pydantic import UUID4
 
 from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
@@ -69,9 +69,14 @@ async def post(
     status_code=status.HTTP_200_OK,
     response_model=list[AtletaOut],
 )
-async def query(db_session: DatabaseDependency) -> list[AtletaOut]:
-    atletas: list[AtletaOut] = (await db_session.execute(select(AtletaModel))).scalars().all()
-    
+async def query(db_session: DatabaseDependency, name: str | None = Query(None), cpf: int | None = Query(None)) -> list[AtletaOut]:
+    query = select(AtletaModel)
+    if name:
+        query = query.filter(AtletaModel.nome.ilike(f'%{name}%'))
+    if cpf:
+        query = query.filter(AtletaModel.cpf == cpf)
+    atletas: list[AtletaOut] = (await db_session.execute(query)).scalars().all()
+
     return [AtletaOut.model_validate(atleta) for atleta in atletas]
 
 
