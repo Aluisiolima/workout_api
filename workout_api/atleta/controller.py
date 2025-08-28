@@ -2,6 +2,8 @@ from datetime import datetime
 from uuid import uuid4
 from fastapi import APIRouter, Body, HTTPException, status, Query
 from pydantic import UUID4
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 
 from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate, AtletasOut
 from workout_api.atleta.models import AtletaModel
@@ -71,20 +73,19 @@ async def post(
 
 @exceptions()
 @router.get(
-    '/', 
+    '/{limit}&{offset}', 
     summary='Consultar todos os Atletas',
     status_code=status.HTTP_200_OK,
-    response_model=list[AtletasOut],
+    response_model=Page[AtletasOut],
 )
-async def query(db_session: DatabaseDependency, name: str | None = Query(None), cpf: int | None = Query(None)) -> list[AtletasOut]:
+async def query(db_session: DatabaseDependency, name: str | None = Query(None), cpf: int | None = Query(None)) -> Page[AtletasOut]:
     query = select(AtletaModel)
     if name:
         query = query.filter(AtletaModel.nome.ilike(f'%{name}%'))
     if cpf:
         query = query.filter(AtletaModel.cpf == cpf)
-    atletas: list[AtletasOut] = (await db_session.execute(query)).scalars().all()
 
-    return [AtletasOut.model_validate(atleta) for atleta in atletas]
+    return await paginate(db_session, query)
 
 @exceptions()
 @router.get(

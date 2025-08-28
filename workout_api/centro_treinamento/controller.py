@@ -3,6 +3,8 @@ from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import UUID4
 from workout_api.centro_treinamento.schemas import CentroTreinamentoIn, CentroTreinamentoOut
 from workout_api.centro_treinamento.models import CentroTreinamentoModel
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 
 from workout_api.contrib.dependencies import DatabaseDependency
 from workout_api.contrib.exceptions import ExceptionMessages, exceptions
@@ -35,17 +37,14 @@ async def post(
 
 @exceptions()
 @router.get(
-    '/', 
+    '/{limit}&{offset}', 
     summary='Consultar todos os centros de treinamento',
     status_code=status.HTTP_200_OK,
-    response_model=list[CentroTreinamentoOut],
+    response_model=Page[CentroTreinamentoOut],
 )
-async def query(db_session: DatabaseDependency) -> list[CentroTreinamentoOut]:
-    centros_treinamento_out: list[CentroTreinamentoOut] = (
-        await db_session.execute(select(CentroTreinamentoModel))
-    ).scalars().all()
-    
-    return centros_treinamento_out
+async def query(db_session: DatabaseDependency) -> Page[CentroTreinamentoOut]:
+    query = select(CentroTreinamentoModel)
+    return await paginate(db_session, query)
 
 @exceptions()
 @router.get(
