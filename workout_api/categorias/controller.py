@@ -5,10 +5,13 @@ from workout_api.categorias.schemas import CategoriaIn, CategoriaOut
 from workout_api.categorias.models import CategoriaModel
 
 from workout_api.contrib.dependencies import DatabaseDependency
+from workout_api.contrib.exceptions import ExceptionMessages, exceptions
 from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
 
+@exceptions()
 @router.post(
     '/', 
     summary='Criar uma nova Categoria',
@@ -19,15 +22,20 @@ async def post(
     db_session: DatabaseDependency, 
     categoria_in: CategoriaIn = Body(...)
 ) -> CategoriaOut:
-    categoria_out = CategoriaOut(id=uuid4(), **categoria_in.model_dump())
-    categoria_model = CategoriaModel(**categoria_out.model_dump())
-    
-    db_session.add(categoria_model)
-    await db_session.commit()
+    try:
+        categoria_out = CategoriaOut(id=uuid4(), **categoria_in.model_dump())
+        categoria_model = CategoriaModel(**categoria_out.model_dump())
+
+        db_session.add(categoria_model)
+        await db_session.commit()
+    except IntegrityError as e:
+        await ExceptionMessages.handle_exception(e, db_session, 'Nome', categoria_in.nome)
+
 
     return categoria_out
     
-    
+
+@exceptions()
 @router.get(
     '/', 
     summary='Consultar todas as Categorias',
@@ -39,7 +47,7 @@ async def query(db_session: DatabaseDependency) -> list[CategoriaOut]:
     
     return categorias
 
-
+@exceptions()
 @router.get(
     '/{id}', 
     summary='Consulta uma Categoria pelo id',

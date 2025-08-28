@@ -9,10 +9,13 @@ from workout_api.categorias.models import CategoriaModel
 from workout_api.centro_treinamento.models import CentroTreinamentoModel
 
 from workout_api.contrib.dependencies import DatabaseDependency
+from workout_api.contrib.exceptions import ExceptionMessages, exceptions
 from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
 
+@exceptions()
 @router.post(
     '/', 
     summary='Criar um novo atleta',
@@ -54,6 +57,10 @@ async def post(
         
         db_session.add(atleta_model)
         await db_session.commit()
+
+    except IntegrityError as e:
+        await ExceptionMessages.handle_exception(e, db_session, 'CPF', atleta_in.cpf)
+
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
@@ -62,7 +69,7 @@ async def post(
 
     return atleta_out
 
-
+@exceptions()
 @router.get(
     '/', 
     summary='Consultar todos os Atletas',
@@ -79,7 +86,7 @@ async def query(db_session: DatabaseDependency, name: str | None = Query(None), 
 
     return [AtletasOut.model_validate(atleta) for atleta in atletas]
 
-
+@exceptions()
 @router.get(
     '/{id}', 
     summary='Consulta um Atleta pelo id',
@@ -99,7 +106,7 @@ async def get(id: UUID4, db_session: DatabaseDependency) -> AtletaOut:
     
     return atleta
 
-
+@exceptions()
 @router.patch(
     '/{id}', 
     summary='Editar um Atleta pelo id',
@@ -126,7 +133,7 @@ async def patch(id: UUID4, db_session: DatabaseDependency, atleta_up: AtletaUpda
 
     return atleta
 
-
+@exceptions
 @router.delete(
     '/{id}', 
     summary='Deletar um Atleta pelo id',
